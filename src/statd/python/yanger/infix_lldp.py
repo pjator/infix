@@ -37,14 +37,24 @@ def operational():
     data = HOST.run_json(["lldpcli", "show", "neighbors", "-f", "json"], {})
 
     interfaces = data.get("lldp", {}).get("interface", [])
-    
+
     if isinstance(interfaces, dict):
         interfaces = [interfaces]
+
+    seen_keys = defaultdict(set)
 
     for iface_entry in interfaces:
         for iface_name, iface_data in iface_entry.items():
             remote_index = int(iface_data.get("rid", 0))
             time_mark = parse_time(iface_data.get("age"))
+
+            # lldpd's rid is per remote chassis, so one chassis heard on
+            # two of its ports collides when the ages match too.  Nudge
+            # time-mark to keep the YANG list keys unique, rid stays true
+            # to lldpcli output.
+            while (time_mark, remote_index) in seen_keys[iface_name]:
+                time_mark += 1
+            seen_keys[iface_name].add((time_mark, remote_index))
 
             chassis = iface_data.get("chassis", {})
             chassis_id_type, chassis_id_value = extract_chassis_id(chassis, chassis_id_subtype_mapping)
