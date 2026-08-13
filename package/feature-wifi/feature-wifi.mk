@@ -82,6 +82,7 @@ define FEATURE_WIFI_INSTALL_IN_ROMFS
         cp $(FEATURE_WIFI_PKGDIR)/mt7915e.conf $(TARGET_DIR)/etc/modprobe.d/mt7915e.conf
         cp $(FEATURE_WIFI_PKGDIR)/60-rename-wifi-phy.rules $(TARGET_DIR)/etc/udev/rules.d/60-rename-wifi-phy.rules
         cp $(FEATURE_WIFI_PKGDIR)/70-remove-virtual-wifi-interfaces.rules $(TARGET_DIR)/etc/udev/rules.d/70-remove-virtual-wifi-interfaces.rules
+        $(INSTALL) -D -m 0755 $(FEATURE_WIFI_PKGDIR)/wifi-vif-cleanup $(TARGET_DIR)/usr/libexec/infix/wifi-vif-cleanup
 endef
 FEATURE_WIFI_POST_INSTALL_TARGET_HOOKS += FEATURE_WIFI_INSTALL_IN_ROMFS
 
