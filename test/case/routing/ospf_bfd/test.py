@@ -19,6 +19,10 @@ import infamy.route as route
 from infamy.netns import TPMR
 from infamy.util import until, parallel
 
+# Generous OSPF dead interval, so that a fail-over completing well
+# within it can only have been triggered by BFD.
+DEAD_INTERVAL = 60
+
 def config(target, params):
     name = params["name"]
     dif, fif, sif = \
@@ -73,7 +77,7 @@ def config(target, params):
                                         },
                                         "name": fif,
                                         "hello-interval": 1,
-                                        "dead-interval": 10,
+                                        "dead-interval": DEAD_INTERVAL,
                                         "cost": 100,
                                     },
                                     {
@@ -82,7 +86,7 @@ def config(target, params):
                                         },
                                         "name": sif,
                                         "hello-interval": 1,
-                                        "dead-interval": 10,
+                                        "dead-interval": DEAD_INTERVAL,
                                         "cost": 200,
                                     }, {
                                         "name": dif,
@@ -140,7 +144,7 @@ with infamy.Test() as test:
             }
         }
 
-        parallel(config(R1, r1cfg), config(R2, r2cfg))
+        parallel(lambda: config(R1, r1cfg), lambda: config(R2, r2cfg))
 
     with test.step("Setup IP addresses and default routes on h1 and h2"):
         _, h1 = env.ltop.xlate("PC", "h1")
@@ -159,6 +163,13 @@ with infamy.Test() as test:
         until(lambda: route.ipv4_route_exist(R1, "192.168.20.0/24", "192.168.100.2", proto="ietf-ospf:ospfv2"), attempts=200)
         until(lambda: route.ipv4_route_exist(R2, "192.168.10.0/24", "192.168.100.1", proto="ietf-ospf:ospfv2"), attempts=200)
 
+    with test.step("Wait for BFD sessions on the fast and slow links to come up"):
+        print("Waiting for BFD sessions to come up")
+        until(lambda: route.bfd_session_up(R1, "192.168.100.2"), attempts=60)
+        until(lambda: route.bfd_session_up(R1, "192.168.200.2"), attempts=60)
+        until(lambda: route.bfd_session_up(R2, "192.168.100.1"), attempts=60)
+        until(lambda: route.bfd_session_up(R2, "192.168.200.1"), attempts=60)
+
     with test.step("Verify connectivity from PC:src to PC:dst via fast link"):
         h1net.must_reach("192.168.20.2")
         hops = [row[1] for row in h1net.traceroute("192.168.20.2")]
@@ -166,9 +177,16 @@ with infamy.Test() as test:
 
     with test.step("Disable forwarding between R1fast and R2fast to trigger fail-over"):
         breaker.block()
-        print("Give BFD some time to detect the bad link, " +
-              "but not enough for the OSPF dead interval expire")
-        time.sleep(1)
+
+    with test.step("Wait for OSPF to fail over to the slow link, once the fast link is no longer qualified by BFD"):
+        print("Waiting for fail-over to the slow link")
+        start = time.monotonic()
+        until(lambda: route.ipv4_route_exist(R1, "192.168.20.0/24", "192.168.200.2", proto="ietf-ospf:ospfv2"), attempts=30)
+        until(lambda: route.ipv4_route_exist(R2, "192.168.10.0/24", "192.168.200.1", proto="ietf-ospf:ospfv2"), attempts=30)
+        took = time.monotonic() - start
+        assert took < DEAD_INTERVAL / 2, \
+            f"Fail-over took {took:.1f}s, too slow for BFD; " \
+            f"OSPF dead interval ({DEAD_INTERVAL}s) suspected"
 
     with test.step("Verify connectivity from PC:src to PC:dst via slow link"):
         h1net.must_reach("192.168.20.2")

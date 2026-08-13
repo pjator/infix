@@ -124,3 +124,25 @@ def ospf_has_neighbors(target):
                 return True
 
     return False
+
+
+def _get_bfd_sessions(target):
+    xpath = "/ietf-routing:routing/control-plane-protocols"
+    protos = target.get_data(xpath)["routing"]["control-plane-protocols"]
+    for p in protos.get("control-plane-protocol", {}):
+        if p["type"] == "infix-routing:bfdv1":
+            bfd = p.get("bfd") or p.get("ietf-bfd:bfd", {})
+            ip_sh = bfd.get("ip-sh") or bfd.get("ietf-bfd-ip-sh:ip-sh", {})
+            return ip_sh.get("sessions", {}).get("session", [])
+
+    return []
+
+
+def bfd_session_up(target, peer):
+    for session in _get_bfd_sessions(target):
+        if session.get("dest-addr") != peer:
+            continue
+        running = session.get("session-running", {})
+        return running.get("local-state") == "up"
+
+    return False
