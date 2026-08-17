@@ -129,7 +129,7 @@ class Topology:
         b = n[0] if n else {}
         password = b.get("password")
 
-        return qstrip(password) if password is not None else "admin"
+        return _qstrip(password) if password is not None else "admin"
 
     def get_expected_boot(self, node):
         n = self.dotg.get_node(node)
