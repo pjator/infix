@@ -4,6 +4,11 @@
 			boot_targets = "mmc1";
 			ethprime = "eth0";
 
+			/* The R2S Plus has an on-board eMMC (mmc0); the plain R2S does
+			 * not.  Pick the matching kernel DT so the eMMC controller is
+			 * enabled only when the hardware is present. */
+			ixvariant = "if mmc dev 0; then setenv fdtfile rockchip/rk3328-nanopi-r2s-plus.dtb; else setenv fdtfile rockchip/rk3328-nanopi-r2s.dtb; fi";
+
 			/* This is a development platform, hard code developer mode */
 			ixbtn-devmode = "setenv dev_mode yes; echo Enabled";
 

@@ -1,0 +1,20 @@
+#include <arm64/rockchip/rk3328-nanopi-r2s-plus.dts>
+
+#include "infix.dtsi"
+
+/ {
+	compatible = "friendlyarm,nanopi-r2s", "rockchip,rk3328";
+};
+
+&rtl8153 {
+	/*
+	 * Fix port number: device is on port 1, not port 2.
+	 */
+	reg = <1>;
+};
+
+&{/chosen/infix} {
+	/* Expose only the external USB 2.0 port for user management */
+	usb-ports = <&usb_host0_ehci>;
+	usb-port-names = "USB";
+};

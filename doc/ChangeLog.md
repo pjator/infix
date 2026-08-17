@@ -15,6 +15,11 @@ All notable changes to the project are documented in this file.
 - Build RPi64 SD card images in release builds
 - Include .pkg files in release builds
 
+### Added
+
+- Add NanoPi R2S Plus support (on-board 32 GB eMMC), including U-Boot
+  device tree selection so the eMMC is enabled when present
+
 ### Fixes
 
 - Fix annoying "cannot deselect all services" or reset to YANG default in the
