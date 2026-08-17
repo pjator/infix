@@ -15,9 +15,9 @@
 
 	    "wan-up":       { "path": "/run/led/wan-up" },
 
-	    "startup":   { "path": "/run/finit/cond/run/startup/success" },
-	    "fail-safe": { "path": "/run/finit/cond/run/failure/success" },
-	    "panic":     { "path": "/run/finit/cond/run/failure/failure" }
+	    "startup":   { "path": "/run/finit/cond/usr/startup-config-ok" },
+	    "fail-safe": { "path": "/run/finit/cond/usr/failure-config-ok" },
+	    "panic":     { "path": "/run/finit/cond/usr/failure-config-error" }
 	},
 	"udev": {
 	    "power-a": { "subsystem": "power_supply" },

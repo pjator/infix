@@ -49,6 +49,23 @@
  */
 #define SENTINEL_PATH "/run/confd.boot"
 
+/*
+ * Set a finit condition in the usr/ namespace, e.g.
+ * "usr/startup-config-ok", used to signal IITO (and finit services) about
+ * the outcome of the bootstrap/startup sequence.  Finit guarantees
+ * /run/finit/cond/usr exists (via its tmpfiles snippet), so no parent
+ * directories are created here.
+ */
+static void set_finit_cond(const char *cond)
+{
+	char path[128];
+	snprintf(path, sizeof(path), "/run/finit/cond/usr/%s", cond);
+
+
+	if (symlink("/run/finit/cond/reconf", path) && errno != EEXIST)
+		WARN("Failed to set finit condition %s: %m", path);
+}
+
 /* Callback type names from sysrepo plugin API */
 #define SRP_INIT_CB    "sr_plugin_init_cb"
 #define SRP_CLEANUP_CB "sr_plugin_cleanup_cb"
@@ -505,27 +522,32 @@ static void handle_startup_failure(sr_session_ctx_t *sess, const char *failure_p
 	int r;
 
 	ERROR("Failed loading startup-config, reverting to Fail Secure mode!");
+	set_finit_cond("startup-config-error");
 
 	/* Reset to factory-default */
 	r = sr_copy_config(sess, NULL, SR_DS_FACTORY_DEFAULT, timeout_ms);
 	if (r != SR_ERR_OK) {
 		ERROR("sr_copy_config(factory-default) failed: %s", sr_strerror(r));
 		/* Nuclear option: wipe everything */
+		banner_append("CRITICAL ERROR: Logins are disabled, no credentials available");
 		systemf("rm -f /etc/sysrepo/data/*startup* /etc/sysrepo/data/*running* /dev/shm/sr_*");
+		set_finit_cond("failure-config-error");
 		return;
 	}
 
 	/* Load failure-config on top */
 	if (fexist(failure_path)) {
 		if (load_config(conn, sess, failure_path, timeout_ms)) {
-			ERROR("Failed loading failure-config, aborting!");
+			ERROR("failed applying failure-config, aborting!");
 			banner_append("CRITICAL ERROR: Logins are disabled, no credentials available");
 			systemf("initctl -nbq runlevel 9");
+			set_finit_cond("failure-config-error");
 			return;
 		}
 	}
 
 	banner_append("ERROR: Corrupt startup-config, system has reverted to default login credentials");
+	set_finit_cond("failure-config-ok");
 }
 
 /*
@@ -587,6 +609,7 @@ static int bootstrap_config(sr_conn_ctx_t *conn, sr_session_ctx_t *sess,
 		if (r != SR_ERR_OK)
 			WARN("Failed to sync startup datastore: %s", sr_strerror(r));
 
+		set_finit_cond("startup-config-ok");
 		return 0;
 	}
 
@@ -841,7 +864,7 @@ int main(int argc, char **argv)
 	quiet_now();
 
 	/* Signal that bootstrap is complete (dbus, resolvconf depend on this) */
-	symlink("/run/finit/cond/reconf", "/run/finit/cond/usr/bootstrap");
+	set_finit_cond("bootstrap");
 
 	/*
 	 * Write restart sentinel.  From this point on, sysrepo and the system
