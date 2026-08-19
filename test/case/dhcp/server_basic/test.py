@@ -33,7 +33,7 @@ with infamy.Test() as test:
         client = env.attach("client", "mgmt")
         server = env.attach("server", "mgmt")
 
-    with test.step("Configure DHCP server and client"):
+    with test.step("Configure DHCP server and client's hostname"):
         server.put_config_dicts({
             "ietf-interfaces": {
                 "interfaces": {
@@ -68,6 +68,18 @@ with infamy.Test() as test:
             }})
 
         client.put_config_dicts({
+            "ietf-system": {
+                "system": {"hostname": HOSTNM1}
+            }})
+
+    with test.step("Verify DHCP client's original hostname"):
+        until(lambda: verify_hostname(client, HOSTNM1))
+
+    with test.step("Enable DHCP client with hostname and domain options"):
+        # Enabled only after the original hostname has been verified:
+        # the lease, and with it the server-provided hostname, can land
+        # within milliseconds of this commit.
+        client.put_config_dicts({
             "ietf-interfaces": {
                 "interfaces": {
                     "interface": [{
@@ -82,13 +94,7 @@ with infamy.Test() as test:
                         }
                     }]
                 }
-            },
-            "ietf-system": {
-                "system": {"hostname": HOSTNM1}
             }})
-
-    with test.step("Verify DHCP client's original hostname"):
-        until(lambda: verify_hostname(client, HOSTNM1))
 
     with test.step("Verify DHCP client lease from server's pool"):
         until(lambda: iface.address_exist(client, client["link"], ADDRESS))
