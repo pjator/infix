@@ -17,8 +17,9 @@ image::topology.svg[DHCP Server topology, align=center, scaledwidth=75%]
 ==== Sequence
 
 . Set up topology and attach to client and server DUTs
-. Configure DHCP server and client
+. Configure DHCP server and client's hostname
 . Verify DHCP client's original hostname
+. Enable DHCP client with hostname and domain options
 . Verify DHCP client lease from server's pool
 . Verify DHCP client's new hostname
 . Verify DHCP client has no default route

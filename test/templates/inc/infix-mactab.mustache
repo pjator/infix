@@ -1,0 +1,4 @@
+truncate -s 0 $imgdir/{{name}}.mactab
+{{#links}}
+echo "{{qn_name}}	{{qn_mac}}" >>$imgdir/{{name}}.mactab
+{{/links}}

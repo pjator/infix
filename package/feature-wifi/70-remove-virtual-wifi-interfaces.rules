@@ -1,7 +1,9 @@
 # Remove kernel-created WiFi interfaces
-# All WiFi interfaces are now virtual interfaces created by confd
-SUBSYSTEM=="net", ACTION=="add", KERNEL=="wlan*", \
-  TEST=="/sys/class/net/$name/phy80211/name", \
-  PROGRAM="/bin/cat /sys/class/net/%k/phy80211/name", \
-  TEST!="/run/wifi-cleaned-%c", \
-  RUN+="/bin/sh -c '/usr/sbin/iw dev %k del && touch /run/wifi-cleaned-%c'"
+# All WiFi interfaces are now virtual interfaces created by confd.
+# No sysfs conditions here: the add uevent races the creation of the
+# phy80211 link, so any TEST/PROGRAM on it can silently skip the rule.
+# DEVTYPE is safe -- it comes from the uevent itself (mac80211 sets it
+# before netdev registration) and spares the helper for non-WiFi
+# interfaces that merely carry a wlan* name.
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="wlan*", ENV{DEVTYPE}=="wlan", \
+  RUN+="/usr/libexec/infix/wifi-vif-cleanup %k"

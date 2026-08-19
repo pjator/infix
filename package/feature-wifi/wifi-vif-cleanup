@@ -1,0 +1,49 @@
+#!/bin/sh
+# Remove the kernel-created default vif (wlanN) of a newly registered phy.
+# All user-facing WiFi interfaces are created by confd, so the default vif
+# only clutters the interface view; delete it once per phy.
+#
+# Called from 70-remove-virtual-wifi-interfaces.rules on every wlan* add
+# event.  All checks live here, not in udev TEST/PROGRAM conditions: the
+# netdev add uevent is emitted before the kernel creates the phy80211
+# sysfs link, so a condition on it silently skips the rule under load,
+# leaking the vif (no retry ever comes).
+#
+# The once-per-phy guard is keyed on the phy index, which unlike the phy
+# name is stable across the phyN -> radioN rename (60-rename-wifi-phy.rules,
+# running concurrently) and never reused.  The guard keeps us from deleting
+# a user-configured interface that happens to be named wlanN.
+
+ifname=$1
+[ -n "$ifname" ] || exit 0
+
+# The rule matched DEVTYPE=wlan, so this is a WiFi netdev and the link
+# will appear; be patient rather than leak the vif.  Bail out only if
+# the interface itself is gone.
+for _ in $(seq 300); do
+	idx=$(cat "/sys/class/net/$ifname/phy80211/index" 2>/dev/null) && break
+	[ -d "/sys/class/net/$ifname" ] || exit 0
+	sleep 0.1
+done
+
+if [ -z "$idx" ]; then
+	/usr/bin/logger -p user.err -t wifi-vif-cleanup \
+		"timed out waiting for phy80211 link of $ifname"
+	exit 1
+fi
+
+guard="/run/wifi-cleaned-$idx"
+[ -e "$guard" ] && exit 0	# cleaned once; this is a user interface
+
+for _ in $(seq 30); do
+	if /usr/sbin/iw dev "$ifname" del; then
+		touch "$guard"
+		exit 0
+	fi
+	[ -d "/sys/class/net/$ifname" ] || exit 0
+	sleep 0.5
+done
+
+/usr/bin/logger -p user.err -t wifi-vif-cleanup \
+	"failed to remove kernel-created $ifname (phy index $idx)"
+exit 1

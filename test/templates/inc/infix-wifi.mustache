@@ -1,0 +1,8 @@
+# Number of mac80211_hwsim radios for this node = radioN carrier ports the
+# topology wired to it.  Read at boot by 00-hwsim (fw_cfg opt/wifi); 0 means
+# no radios, so the node stays wifi-free.
+radios=0
+{{#links}}
+case "{{qn_name}}" in radio[0-9]*) radios=$((radios + 1));; esac
+{{/links}}
+echo "$radios" > $imgdir/{{name}}.wifi

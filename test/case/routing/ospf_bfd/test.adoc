@@ -23,8 +23,10 @@ image::topology.svg[OSPF BFD topology, align=center, scaledwidth=75%]
 . Configure R1 and R2
 . Setup IP addresses and default routes on h1 and h2
 . Wait for R1 and R2 to peer
+. Wait for BFD sessions on the fast and slow links to come up
 . Verify connectivity from PC:src to PC:dst via fast link
 . Disable forwarding between R1fast and R2fast to trigger fail-over
+. Wait for OSPF to fail over to the slow link, once the fast link is no longer qualified by BFD
 . Verify connectivity from PC:src to PC:dst via slow link
 
 
