@@ -10,10 +10,15 @@ All notable changes to the project are documented in this file.
 
 - Upgrade Linux kernel to 6.18.45 (LTS)
 - Upgrade Buildroot to 2025.02.15 (LTS)
+- Upgrade mdns-alias to [v1.3][ma13]: fixes crash on hostname change while
+  disconnected from Avahi, treats entry group failures and CNAME collisions
+  as transient (retried instead of exiting), and quieter logs by default
 - Add support for firewall address-set (ipset): named sets of IP addresses and
   networks, usable as zone sources for per-IP access control, issue #1189
 - Build RPi64 SD card images in release builds
 - Include .pkg files in release builds
+- The `statd` service now logs at `notice` level by default, like other
+  services, and supports `-v <level>` to adjust verbosity at runtime
 
 ### Added
 
@@ -24,6 +29,14 @@ All notable changes to the project are documented in this file.
 
 - Fix annoying "cannot deselect all services" or reset to YANG default in the
   web interface's firewall configuration page
+- Fix sporadic slow response, or timeouts, when reading device status while
+  mDNS neighbors are being discovered, e.g., after an mDNS restart.  Updates
+  to the neighbor table are now batched, and politely retried when other users
+  or services keep the system busy, logged as:
+
+        statd[3558]: mdns: operational datastore busy, retrying ...
+
+[ma13]: https://github.com/troglobit/mdns-alias/releases/tag/v1.3
 
 [v26.06.0][] - 2026-07-01
 -------------------------

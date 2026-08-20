@@ -35,6 +35,21 @@ CONFD_CONF_OPTS += --enable-gps
 else
 CONFD_CONF_OPTS += --disable-gps
 endif
+ifeq ($(BR2_PACKAGE_TTYD),y)
+CONFD_CONF_OPTS += --enable-console
+else
+CONFD_CONF_OPTS += --disable-console
+endif
+ifeq ($(BR2_PACKAGE_NETBROWSE),y)
+CONFD_CONF_OPTS += --enable-netbrowse
+else
+CONFD_CONF_OPTS += --disable-netbrowse
+endif
+ifeq ($(BR2_PACKAGE_WEBUI),y)
+CONFD_CONF_OPTS += --enable-webui
+else
+CONFD_CONF_OPTS += --disable-webui
+endif
 define CONFD_INSTALL_EXTRA
 	for fn in confd.conf crond.conf resolvconf.conf; do \
 		cp $(CONFD_PKGDIR)/$$fn  $(FINIT_D)/available/; \

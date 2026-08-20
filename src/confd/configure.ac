@@ -52,6 +52,18 @@ AC_ARG_ENABLE(gps,
         AS_HELP_STRING([--enable-gps], [Enable support for GPS receivers]),,[
 	enable_gps=no])
 
+AC_ARG_ENABLE(console,
+        AS_HELP_STRING([--enable-console], [Enable support for web console (ttyd)]),,[
+	enable_console=no])
+
+AC_ARG_ENABLE(netbrowse,
+        AS_HELP_STRING([--enable-netbrowse], [Enable support for mDNS network browser]),,[
+	enable_netbrowse=no])
+
+AC_ARG_ENABLE(webui,
+        AS_HELP_STRING([--enable-webui], [Enable support for web management interface]),,[
+	enable_webui=no])
+
 AC_ARG_WITH(login-shell,
         AS_HELP_STRING([--with-login-shell=shell], [Login shell for new users, default: /bin/false]),
 	[login_shell=$withval], [login_shell=yes])
@@ -68,6 +80,15 @@ AS_IF([test "x$enable_wifi" = "xyes"], [
 
 AS_IF([test "x$enable_gps" = "xyes"], [
         AC_DEFINE(HAVE_GPS, 1, [Built with GPS receiver support])])
+
+AS_IF([test "x$enable_console" = "xyes"], [
+        AC_DEFINE(HAVE_CONSOLE, 1, [Built with web console (ttyd) support])])
+
+AS_IF([test "x$enable_netbrowse" = "xyes"], [
+        AC_DEFINE(HAVE_NETBROWSE, 1, [Built with mDNS network browser support])])
+
+AS_IF([test "x$enable_webui" = "xyes"], [
+        AC_DEFINE(HAVE_WEBUI, 1, [Built with web management interface support])])
 
 AS_IF([test "x$with_login_shell" != "xno"], [
 	AS_IF([test "x$login_shell" = "xyes"], [login_shell=/bin/false])

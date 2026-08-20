@@ -28,6 +28,27 @@
 
 enum mdns_cmd { MDNS_ADD, MDNS_DELETE, MDNS_UPDATE };
 
+/*
+ * The web console (ttyd), the network browser, and the web management
+ * interface are optional packages.  Their configuration is accepted,
+ * but treated as disabled on images where they are not installed.
+ */
+#ifdef HAVE_CONSOLE
+static const int have_console = 1;
+#else
+static const int have_console = 0;
+#endif
+#ifdef HAVE_NETBROWSE
+static const int have_netbrowse = 1;
+#else
+static const int have_netbrowse = 0;
+#endif
+#ifdef HAVE_WEBUI
+static const int have_webui = 1;
+#else
+static const int have_webui = 0;
+#endif
+
 #define FOREACH_SVC(SVC)			\
         SVC(none)				\
         SVC(ssh)				\
@@ -500,7 +521,7 @@ static int ttyd_change(sr_session_ctx_t *session, struct lyd_node *config, struc
 	if (!cfg)
 		return SR_ERR_OK;
 
-	ena = lydx_is_enabled(srv, "enabled") &&
+	ena = have_console && lydx_is_enabled(srv, "enabled") &&
 	      lydx_is_enabled(lydx_get_xpathf(config, WEB_XPATH), "enabled");
 	svc_enable(ena, ttyd, NULL);
 	finit_reload("nginx");
@@ -534,7 +555,7 @@ static int netbrowse_change(sr_session_ctx_t *session, struct lyd_node *config, 
 	if (!cfg)
 		return SR_ERR_OK;
 
-	ena = lydx_is_enabled(srv, "enabled") &&
+	ena = have_netbrowse && lydx_is_enabled(srv, "enabled") &&
 	      lydx_is_enabled(lydx_get_xpathf(config, WEB_XPATH), "enabled");
 	svc_enable(ena, netbrowse, NULL);
 	mdns_alias_conf(ena);
@@ -729,14 +750,16 @@ static int web_change(sr_session_ctx_t *session, struct lyd_node *config, struct
 	/* Web master on/off: propagate to nginx and all sub-services */
 	if (lydx_get_xpathf(diff, WEB_XPATH "/enabled")) {
 		int rc_ena = ena && lydx_is_enabled(lydx_get_xpathf(config, WEB_RESTCONF_XPATH), "enabled");
-		int nb_ena = ena && lydx_is_enabled(lydx_get_xpathf(config, WEB_NETBROWSE_XPATH), "enabled");
+		int nb_ena = have_netbrowse && ena &&
+			lydx_is_enabled(lydx_get_xpathf(config, WEB_NETBROWSE_XPATH), "enabled");
 
-		svc_enable(ena && lydx_is_enabled(lydx_get_xpathf(config, WEB_CONSOLE_XPATH), "enabled"),
+		svc_enable(have_console && ena &&
+			   lydx_is_enabled(lydx_get_xpathf(config, WEB_CONSOLE_XPATH), "enabled"),
 			   ttyd, "ttyd");
 		svc_enable(nb_ena, netbrowse, "netbrowse");
 		/* Rousette follows web/enabled; external access is gated separately via restconf/enabled */
 		ena ? finit_enable("restconf") : finit_disable("restconf");
-		ena ? finit_enable("webui") : finit_disable("webui");
+		have_webui && ena ? finit_enable("webui") : finit_disable("webui");
 		mdns_records(rc_ena ? MDNS_ADD : MDNS_DELETE, restconf);
 		svc_enable(ena, web, "nginx");
 		mdns_alias_conf(nb_ena);
